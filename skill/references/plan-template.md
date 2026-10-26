@@ -34,7 +34,8 @@ change a contract test case; never delete a test the plan doesn't tell you to de
 change, rewrite the file with the editor (no `git checkout` / `git restore`).
 ### C4b. Production code NEVER detects that it is under test.
 No `NODE_ENV === 'test'`, `process.env.VITEST`, `expect.getState()`, `currentTestName`, `_isMockFunction`,
-`PYTEST_CURRENT_TEST`, `'pytest' in sys.modules`. An **existing** test that conflicts with the new rule:
+`PYTEST_CURRENT_TEST`, `'pytest' in sys.modules`, and no special-casing of the contract's example inputs
+(implement the general rule). An **existing** test that conflicts with the new rule:
 update its assertion to the new rule and include that file in the commit.
 ### C4c. Never overwrite an existing file when the plan says CREATE — STOP and report.
 ### C5. Never wait on a background command and never interrupt a running one.

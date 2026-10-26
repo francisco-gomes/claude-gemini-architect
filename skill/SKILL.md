@@ -40,7 +40,7 @@ The plan describes behavior, interfaces and tests. **It never contains the imple
 - Never `--dangerously-skip-permissions`.
 - Never add allow rules to agy's settings, however narrow. Rules match by prefix: `npx vitest run*` also allows `npx vitest run && ./deploy.sh prod`. In headless mode the denial is the only control between Gemini and production.
 - Gemini never commits. You commit after your review.
-- User wants it faster? Offer herdr mode (Gemini runs its own commands, each one checked), more tasks per `agy` call, or keep going as is. Explain the prefix risk. A bypass is a change the user makes in their own settings, not one you make.
+- User wants it faster? Offer herdr mode (Gemini runs its own commands, each one checked), several tasks per `agy` call (batch tasks, never phases: tests and code always go in separate calls), or keep going as is. Explain the prefix risk. A bypass is a change the user makes in their own settings, not one you make.
 
 ## Review every commit
 
@@ -58,4 +58,5 @@ Only after the user explicitly authorizes merge and deploy. One step at a time, 
 | "A narrow allow rule is safe" | Prefix match: chained commands pass too. |
 | "Let Gemini commit, I'll review after" | The review is the gate. It comes before the commit. |
 | "I'll put a suggested implementation in the plan" | That's the work Gemini is there to do. |
+| "Tests and code in one call saves a round" | The RED has to fail before the code exists. A RED rebuilt afterwards (stash, old copy) proves less. Batch tasks, not phases. |
 | "Gemini says all tests pass" | Run them yourself. |

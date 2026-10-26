@@ -26,7 +26,7 @@ A finding from your review goes back the same way: an instruction with a contrac
 
 ## Going faster without opening permissions
 
-- Send two or three small, independent tasks in one call, each with its own test files, then run their RED/GREEN blocks in sequence.
+- **Batch tasks, not phases.** One call writes the tests of two or three small, independent tasks; you run all their RED blocks; the next call (same conversation) writes their code; you run the GREEN blocks. Never put a task's tests and its code in the same call, however small the task: the RED has to fail before the code exists, and a RED rebuilt afterwards (stashing the code, testing an old copy) proves less and adds risky git steps.
 - Switch to herdr mode, where Gemini runs its own commands and each one passes the watchdog or your approval.
 - Don't add allow rules to agy's settings: they match by prefix, so `npx vitest run*` also lets through `npx vitest run && <anything>`.
 
