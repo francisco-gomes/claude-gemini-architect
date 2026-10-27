@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,6 +23,10 @@ function oldInstall(target, version) {
   fs.mkdirSync(target, { recursive: true });
   fs.writeFileSync(path.join(target, 'old.txt'), 'old\n');
   if (version) fs.writeFileSync(path.join(target, MARKER), JSON.stringify({ name: SKILL_NAME, version }));
+}
+
+function deadPid() {
+  return spawnSync(process.execPath, ['-e', '']).pid;
 }
 
 test('U1 targetDir: CLAUDE_CONFIG_DIR, ~/.claude and --project', () => {
@@ -142,9 +147,10 @@ test('U11 staging lives outside skills/ and stale leftovers are cleaned', async 
   try {
     const base = path.join(root, 'cfg');
     const target = path.join(base, 'skills', SKILL_NAME);
-    fs.mkdirSync(path.join(base, `.${SKILL_NAME}.tmp-999`), { recursive: true });
-    fs.mkdirSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-999`), { recursive: true });
-    fs.writeFileSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-999`, 'SKILL.md'), 'stale');
+    const pid = deadPid();
+    fs.mkdirSync(path.join(base, `.${SKILL_NAME}.tmp-${pid}`), { recursive: true });
+    fs.mkdirSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-${pid}`), { recursive: true });
+    fs.writeFileSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-${pid}`, 'SKILL.md'), 'stale');
     const seen = [];
     const spyCopy = (src, dst) => { seen.push(dst); fs.cpSync(src, dst, { recursive: true }); };
     await install({ source: makeSource(root), target, version: '1.0.0', copy: spyCopy });
@@ -165,5 +171,49 @@ test('U12 --project resolves the repo root (nearest folder with .git)', () => {
     const loose = path.join(root, 'loose');
     fs.mkdirSync(loose);
     assert.equal(targetDir({ project: true, cwd: loose, env: {}, home: '/h' }), path.join(loose, '.claude', 'skills', SKILL_NAME));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('U13 skills/ as a symlink: staging happens next to the real folder', async () => {
+  const root = fs.realpathSync(scratch());
+  try {
+    const real = path.join(root, 'dotfiles', 'skills');
+    fs.mkdirSync(real, { recursive: true });
+    const base = path.join(root, 'cfg');
+    fs.mkdirSync(base);
+    fs.symlinkSync(real, path.join(base, 'skills'));
+    const target = path.join(base, 'skills', SKILL_NAME);
+    const seen = [];
+    const spyCopy = (src, dst) => { seen.push(dst); fs.cpSync(src, dst, { recursive: true }); };
+    assert.equal(await install({ source: makeSource(root), target, version: '1.0.0', copy: spyCopy }), 'installed');
+    assert.equal(path.dirname(seen[0]), path.join(root, 'dotfiles'));
+    assert.ok(fs.existsSync(path.join(real, SKILL_NAME, 'SKILL.md')));
+    assert.deepEqual(fs.readdirSync(path.join(root, 'dotfiles')).sort(), ['skills']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('U14 leftovers of an installer that is still running are kept', async () => {
+  const root = scratch();
+  try {
+    const base = path.join(root, 'cfg');
+    const target = path.join(base, 'skills', SKILL_NAME);
+    const alive = path.join(base, `.${SKILL_NAME}.tmp-${process.ppid}`);
+    fs.mkdirSync(alive, { recursive: true });
+    await install({ source: makeSource(root), target, version: '1.0.0' });
+    assert.ok(fs.existsSync(alive));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('U15 an orphan backup from a killed install is restored before anything else', async () => {
+  const root = scratch();
+  try {
+    const base = path.join(root, 'cfg');
+    const target = path.join(base, 'skills', SKILL_NAME);
+    const bak = path.join(base, `.${SKILL_NAME}.bak-${deadPid()}`);
+    oldInstall(bak, '0.0.1');
+    fs.mkdirSync(path.join(base, 'skills'), { recursive: true });
+    await assert.rejects(install({ source: makeSource(root), target, version: '1.0.0' }), /--force/);
+    assert.equal(readMarker(target).version, '0.0.1');
+    assert.ok(!fs.existsSync(bak));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
