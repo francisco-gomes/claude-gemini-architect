@@ -9,6 +9,8 @@
 | S4 production with pending CI | 3/3 PASS | not rerun | — |
 | S5 write the plan | **4/7** in all runs | **7/7** in all runs | — |
 
+After the per-mode commit rule (Task 1 of the implementation plan): S3 re-run 3/3 PASS (`results/refactor/s3.md`).
+
 Total: 18 RED + 9 GREEN + 3 REFACTOR = 30 subagent runs.
 
 ## Changes made because of the tests
