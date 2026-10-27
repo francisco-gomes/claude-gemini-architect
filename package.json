@@ -1,0 +1,42 @@
+{
+  "name": "claude-gemini-architect",
+  "version": "0.1.0",
+  "description": "Save Claude tokens: Claude designs the plan, Gemini does the heavy lifting through Antigravity (agy), and Claude reviews the diff.",
+  "type": "module",
+  "bin": {
+    "claude-gemini-architect": "bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "skill/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter=tap test/installer.test.js && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/scripts -p 'test_*.py'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "skill",
+    "gemini",
+    "antigravity",
+    "agy",
+    "token-saving"
+  ],
+  "author": "Chico IA (https://github.com/francisco-gomes)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/francisco-gomes/claude-gemini-architect.git"
+  },
+  "homepage": "https://github.com/francisco-gomes/claude-gemini-architect#readme",
+  "bugs": {
+    "url": "https://github.com/francisco-gomes/claude-gemini-architect/issues"
+  }
+}
