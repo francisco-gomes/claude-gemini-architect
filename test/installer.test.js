@@ -153,3 +153,17 @@ test('U11 staging lives outside skills/ and stale leftovers are cleaned', async 
     assert.deepEqual(fs.readdirSync(base).sort(), ['skills']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('U12 --project resolves the repo root (nearest folder with .git)', () => {
+  const root = scratch();
+  try {
+    const repo = path.join(root, 'repo');
+    const sub = path.join(repo, 'packages', 'api');
+    fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+    fs.mkdirSync(sub, { recursive: true });
+    assert.equal(targetDir({ project: true, cwd: sub, env: {}, home: '/h' }), path.join(repo, '.claude', 'skills', SKILL_NAME));
+    const loose = path.join(root, 'loose');
+    fs.mkdirSync(loose);
+    assert.equal(targetDir({ project: true, cwd: loose, env: {}, home: '/h' }), path.join(loose, '.claude', 'skills', SKILL_NAME));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

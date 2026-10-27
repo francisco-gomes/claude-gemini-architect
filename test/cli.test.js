@@ -210,3 +210,16 @@ test('H1 hasCommand finds executables only', () => {
     assert.equal(hasCommand('absent', { PATH: dir }, 'linux'), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('C14 --project from a subfolder installs at the repo root', () => {
+  const box = sandbox();
+  try {
+    fs.mkdirSync(path.join(box.cwd, '.git'));
+    const sub = path.join(box.cwd, 'packages', 'api');
+    fs.mkdirSync(sub, { recursive: true });
+    const r = spawnSync(process.execPath, [BIN, '--project'], { cwd: sub, env: { PATH: box.bin, HOME: box.home, NO_COLOR: '1' }, encoding: 'utf8', input: '' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(fs.existsSync(path.join(box.cwd, '.claude', 'skills', NAME, 'SKILL.md')));
+    assert.ok(!fs.existsSync(path.join(sub, '.claude')));
+  } finally { clean(box); }
+});
