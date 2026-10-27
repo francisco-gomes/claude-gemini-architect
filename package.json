@@ -15,7 +15,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test --test-reporter=tap test/installer.test.js test/cli.test.js && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/scripts -p 'test_*.py'"
+    "test": "node --test --test-reporter=tap test/installer.test.js test/cli.test.js && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/scripts -p 'test_*.py'",
+    "prepack": "find skill -name __pycache__ -type d -prune -exec rm -rf {} +"
   },
   "engines": {
     "node": ">=18"
