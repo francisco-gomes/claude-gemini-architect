@@ -6,7 +6,7 @@ Read the code before writing the plan. A plan written from memory gets paths, si
 
 ---
 
-```markdown
+````markdown
 # <Title> — <what changes, in one line>
 
 > **For the executor (Gemini):** you write the code and the tests; this plan is the contract. Read
@@ -43,7 +43,9 @@ update its assertion to the new rule and include that file in the commit.
 ### C7. After the last task, STOP and write the report. Never start Part B on your own.
 
 **Before you start:**
-    cd <repo> && git checkout -q <branch> && git --no-pager log --oneline -1 && test -z "$(git status --short | grep -v '^?? docs/')" && echo OK || echo FAILED
+```bash
+cd <repo> && git checkout -q <branch> && git --no-pager log --oneline -1 && test -z "$(git status --short | grep -v '^?? docs/')" && echo OK || echo FAILED
+```
 
 ## Context for someone with no history
 <the problem, with data; "where things live": file → responsibility>
@@ -73,7 +75,7 @@ Rules: one step at a time; `FAILED` = STOP; waits take minutes (don't rerun, don
 commands in this script; no SQL that writes except the marked step.
 B0 everything in place · B1 push + PR · B2 PR CI (gate) · B3 merge · B4 wait for deploy · B5 service healthy
 with the new code · B6… read-only checks · Bn main CI by commit SHA
-```
+````
 
 ---
 

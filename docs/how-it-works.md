@@ -37,7 +37,7 @@ Ways to save more:
 
 | Script | What it does | Exit codes |
 |---|---|---|
-| `python3 scripts/watchdog.py <log> [agent]` | Part A only. Approves safe commands in the agy pane and stops at the first forbidden or truncated one. Log lines: `APPROVED #n`, `STOPPED: …`, `END: …`. | 0 finished, 1 setup error, 2 forbidden/truncated, 3 unknown dialog |
+| `python3 scripts/watchdog.py <log> <plan.md> [--agent name]` | Part A only. Approves commands identical to a bash block of the plan's PART A, and read-only commands; everything else stops it. Log lines: `APPROVED #n [plan]` / `[read-only]`, `STOPPED: …`, `END: …`. | 0 finished, 1 setup error, 2 off-plan/forbidden/truncated, 3 unknown dialog |
 | `python3 scripts/extract_blocks.py <plan.md> <blocks.json>` | Saves the bash blocks of the plan's `# PART B` as B0, B1… | 0 written, 1 no Part B or no block, 2 usage |
 | `python3 scripts/next_block.py <blocks.json> [agent]` | Part B. Waits for Gemini's next request and says which block it is: `REQUEST: B3`, `REQUEST: OFF-SCRIPT: …` or `GEMINI STOPPED`. **Never approves anything.** | 0 done, 1 herdr missing, 2 usage |
 

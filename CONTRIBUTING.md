@@ -16,15 +16,11 @@ Requirements: Node 18+, Python 3. No dependencies to install.
 
 A wording change should come with the scenario it fixes: run it without the change, run it with the change, and add both results to `skill-tests/results/`.
 
-## Adding a watchdog pattern
+## Changing what the watchdog approves
 
-1. Add the pattern to `BASE_DENY` in `skill/scripts/watchdog.py`.
-2. Add the command to `FORBIDDEN` in `test/scripts/test_watchdog.py`, plus a similar command that must stay allowed (to `ALLOWED`) if the pattern could catch it.
-3. `npm test`.
+The watchdog approves only commands identical to a bash block of the plan's Part A, and read-only commands (`is_read_only` in `skill/scripts/watchdog.py`). To allow another read-only command, add it to the allowed segments and add a row to `READ_ONLY_OK` in `test/scripts/test_watchdog.py`, plus a dangerous variant to `READ_ONLY_NO`. Then `npm test`.
 
-When unsure, block: a false positive only makes the watchdog stop and hand the decision to Claude.
-
-Project-specific commands (your deploy tool, your release script) don't belong in the built-in list. Use `GEMINI_ARCHITECT_EXTRA_DENY`.
+When unsure, leave it out: an unknown command only makes the watchdog stop and hand the decision to Claude.
 
 ## Rules
 

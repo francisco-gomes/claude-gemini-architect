@@ -96,9 +96,9 @@ cp -r claude-gemini-architect/skill ~/.claude/skills/claude-gemini-architect
 ## Security model
 
 - **Headless `agy` can't run commands, and the skill keeps it that way.** It never uses `--dangerously-skip-permissions` and never adds allow rules to agy's settings. Those rules match by prefix, so a "narrow" `npx vitest run*` also allows `npx vitest run && ./deploy.sh prod`. If you want a bypass anyway, that's a change you make in your own settings; the skill won't make it for you.
-- **The watchdog (herdr mode, Part A only)** approves safe commands and stops at the first push, merge, `gh`, deploy or migration script, docker, database client, recursive delete, `--force`, package install, version manager (`nvm`, `fnm`, `volta`, `asdf`, `pyenv`), `git checkout --`/`restore`/`stash`, `curl`, `sudo` or `kill`, even with git global options in between (`git -C dir push`). It also stops when a command is cut off on screen, because it won't approve what it can't see. Add your own patterns:
+- **The watchdog (herdr mode, Part A only)** approves on its own only two kinds of command: a command identical to a bash block of the plan's Part A (which Claude wrote and reviewed), and read-only commands such as `cat`, `ls`, `grep` or `git status/log/diff`. Anything else (a push, an install, a variant it doesn't recognize, a command cut off on screen) stops it and hands the decision to Claude. Extra patterns veto even read-only commands:
   ```bash
-  export GEMINI_ARCHITECT_EXTRA_DENY='terraform\s+apply|make\s+release'
+  export GEMINI_ARCHITECT_EXTRA_DENY='\.env\b|secrets/'
   ```
 - **Production (Part B) is never automatic.** It starts only after you explicitly authorize merge and deploy, and it runs one step at a time, each result checked before the next.
 

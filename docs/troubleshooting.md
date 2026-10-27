@@ -12,8 +12,8 @@ A permission dialog can be open while the status says idle. Look at the screen: 
 **The watchdog stopped with `TRUNCATED:`.**
 The command didn't fit on screen, so the watchdog can't check it. Read it in the pane; if it's legitimate, approve that one with `herdr agent send-keys gemini-exec enter` and restart the watchdog.
 
-**The watchdog stopped with `FORBIDDEN:` on something harmless.**
-False positives are by design (for example, a commit message or a file path that mentions `git push`, `migration` or `deploy`). Check it, approve that one by hand, and restart the watchdog.
+**The watchdog stopped with `OFF-PLAN:`.**
+Gemini asked for a command that isn't a bash block of the plan's Part A nor a read-only command. That's how the watchdog is meant to work: check it, approve that one by hand if it's legitimate, and restart the watchdog. If it keeps happening for the same command, add it to the plan as a block.
 
 **The watchdog vanished after 30 minutes.**
 Monitor expires after 30 minutes and takes the watchdog with it. Restart it right away if Gemini is still working, and never run two at once.
