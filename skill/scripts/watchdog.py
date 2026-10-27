@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""PART A watchdog (code only): approves the safe commands Gemini (agy) asks to run in a herdr pane and
-STOPS at the first forbidden one (push, merge, deploy, migrations, docker, databases, rm -r, installs...).
+"""PART A watchdog (code only): approves only bash blocks of the plan's PART A and read-only commands;
+stops at any other command (push, installs, commands outside the plan, forbidden or truncated commands).
 
-Usage: python3 watchdog.py <log-file> [agent-name]   (default agent: gemini-exec)
-GEMINI_ARCHITECT_EXTRA_DENY='<regex>' adds project-specific patterns (case-insensitive) to the built-in list.
-Exit codes: 0 agent idle long enough (finished), 1 setup or usage error, 2 forbidden or truncated command,
+Usage: python3 watchdog.py <log-file> <plan.md> [<plan.md> ...] [--agent <name>]   (default agent: gemini-exec)
+GEMINI_ARCHITECT_EXTRA_DENY='<regex>' adds project-specific patterns (case-insensitive) to veto even read-only commands.
+Exit codes: 0 agent idle long enough (finished), 1 setup or usage error, 2 command outside the plan, forbidden or truncated,
 3 unknown dialog.
 NEVER use it in PART B (production): there every command is approved by hand after checking the script.
 Run it inside Monitor (it expires after 30 min; restart it if Gemini is still working)."""
@@ -15,6 +15,9 @@ import sys
 import time
 
 from agy_screen import agent_status, is_truncated, pending_request, press, read_screen, squash
+
+PART_B = re.compile(r"^# PART B\b", re.M)
+BASH_BLOCK = re.compile(r"```bash[ \t]*\n(.*?)```", re.S)
 
 GIT_OPTS = (
     r"(?:(?:-C|-c|--git-dir|--work-tree|--namespace)(?:=[^\s;&|]+|\s+[^\s;&|]+)"
@@ -38,6 +41,21 @@ BASE_DENY = (
     r"|\bsudo\b|\bkill\b|pkill"
 )
 
+SIMPLE_READ_ONLY = {
+    "cd", "cat", "head", "tail", "wc", "ls", "pwd", "echo",
+    "grep", "test", "true", "stat", "file", "sort", "uniq",
+    "cut", "tr", "diff", "which",
+}
+
+FORBIDDEN_FIND = {
+    "-delete", "-exec", "-execdir", "-ok", "-okdir",
+    "-fprint", "-fprintf", "-fls",
+}
+
+GIT_READ_ONLY = {
+    "status", "log", "diff", "show", "rev-parse", "ls-files", "rev-list",
+}
+
 
 def deny_regex(extra=None):
     """The built-in deny list plus `extra` (a regex) when given. Raises re.error for an invalid `extra`."""
@@ -55,14 +73,102 @@ def is_forbidden(request, rx):
     return any(rx.search(v) for v in (request, *variants(request)))
 
 
+def part_a_blocks(text):
+    heading = PART_B.search(text)
+    part_a = text[:heading.start()] if heading else text
+    return [squash(b) for b in BASH_BLOCK.findall(part_a)]
+
+
+def is_segment_allowed(seg):
+    tokens = seg.split()
+    if not tokens:
+        return False
+    first = tokens[0]
+    if first in SIMPLE_READ_ONLY:
+        return True
+    if first == "command":
+        return len(tokens) >= 2 and tokens[1] == "-v"
+    if first == "node":
+        return tokens[1:] in (["--version"], ["-v"])
+    if first == "python3":
+        return tokens[1:] == ["--version"]
+    if first == "find":
+        return not any(t in FORBIDDEN_FIND for t in tokens[1:])
+    if first == "git":
+        idx = 1
+        if idx < len(tokens) and tokens[idx] == "--no-pager":
+            idx += 1
+        if idx >= len(tokens):
+            return False
+        sub = tokens[idx]
+        if sub in GIT_READ_ONLY:
+            return True
+        if sub == "branch" and tokens[idx:] == ["branch", "--show-current"]:
+            return True
+        return False
+    return False
+
+
+def is_read_only(command):
+    if any(bad in command for bad in ("$(", "`", "<<", "<(")):
+        return False
+    cleaned = command
+    for r in ("2>&1", "2>/dev/null", "> /dev/null", ">/dev/null"):
+        cleaned = cleaned.replace(r, " ")
+    if ">" in cleaned:
+        return False
+    segments = [s.strip() for s in re.split(r"&&|\|\||[;&|]", cleaned)]
+    if not segments or any(not s for s in segments):
+        return False
+    return all(is_segment_allowed(s) for s in segments)
+
+
+def decide(request, plan_blocks, rx):
+    if is_truncated(request):
+        return ("stop", "TRUNCATED")
+    if squash(request) in plan_blocks:
+        return ("approve", "plan")
+    if is_read_only(request):
+        if not is_forbidden(request, rx):
+            return ("approve", "read-only")
+        else:
+            return ("stop", "FORBIDDEN")
+    return ("stop", "OFF-PLAN")
+
+
 def log(path, message):
     with open(path, "a", encoding="utf-8") as f:
         f.write(time.strftime("%H:%M:%S ") + message + "\n")
 
 
+def parse_args(argv):
+    agent = "gemini-exec"
+    positional = []
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--agent":
+            if i + 1 >= len(argv):
+                return None, None, None, "usage: python3 watchdog.py <log-file> <plan.md> [<plan.md> ...] [--agent <name>]"
+            agent = argv[i + 1]
+            i += 2
+        elif arg.startswith("--agent="):
+            agent = arg.split("=", 1)[1]
+            i += 1
+        elif arg.startswith("-"):
+            return None, None, None, "usage: python3 watchdog.py <log-file> <plan.md> [<plan.md> ...] [--agent <name>]"
+        else:
+            positional.append(arg)
+            i += 1
+    if len(positional) < 2:
+        return None, None, None, "usage: python3 watchdog.py <log-file> <plan.md> [<plan.md> ...] [--agent <name>]"
+    return positional[0], positional[1:], agent, None
+
+
 def main(argv):
-    if len(argv) not in (2, 3):
-        print("usage: python3 watchdog.py <log-file> [agent-name]", file=sys.stderr)
+    log_path, plan_paths, agent, err = parse_args(argv)
+    if err:
+        print(err, file=sys.stderr)
         return 1
     if shutil.which("herdr") is None:
         print("error: herdr not found in PATH (the watchdog only works in herdr mode)", file=sys.stderr)
@@ -72,8 +178,14 @@ def main(argv):
     except re.error as e:
         print(f"error: invalid GEMINI_ARCHITECT_EXTRA_DENY: {e}", file=sys.stderr)
         return 1
-    log_path = argv[1]
-    agent = argv[2] if len(argv) == 3 else "gemini-exec"
+    plan_blocks = []
+    for p in plan_paths:
+        if not os.path.isfile(p):
+            print(f"error: plan file not found: {p}", file=sys.stderr)
+            return 1
+        with open(p, encoding="utf-8") as f:
+            plan_blocks.extend(part_a_blocks(f.read()))
+
     idle_secs = float(os.environ.get("GEMINI_ARCHITECT_IDLE_SECS", "45"))
     poll = float(os.environ.get("GEMINI_ARCHITECT_POLL_SECS", "3"))
     approved = 0
@@ -83,22 +195,20 @@ def main(argv):
         request = pending_request(screen)
         if request is not None:
             command = " ".join(request.split())
-            if is_truncated(request):
-                log(log_path, f"STOPPED: truncated command, cannot check it -> {command}")
-                print(f"TRUNCATED: {command[:300]}", flush=True)
+            action, reason = decide(request, plan_blocks, rx)
+            if action == "approve":
+                approved += 1
+                log(log_path, f"APPROVED #{approved} [{reason}]: {command[:400]}")
+                if approved % 10 == 0:
+                    print(f"{approved} commands approved", flush=True)
+                press(agent, "enter")
+                time.sleep(poll * 4 / 3)
+                idle_since = None
+                continue
+            else:
+                log(log_path, f"STOPPED: {reason} -> {command}")
+                print(f"{reason}: {command[:300]}", flush=True)
                 return 2
-            if is_forbidden(request, rx):
-                log(log_path, f"STOPPED: forbidden command requested -> {command}")
-                print(f"FORBIDDEN: {command[:300]}", flush=True)
-                return 2
-            approved += 1
-            log(log_path, f"APPROVED #{approved}: {command[:400]}")
-            if approved % 10 == 0:
-                print(f"{approved} commands approved", flush=True)
-            press(agent, "enter")
-            time.sleep(poll * 4 / 3)
-            idle_since = None
-            continue
         status = agent_status(agent)
         if status in ("idle", "done"):
             idle_since = idle_since or time.monotonic()

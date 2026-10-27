@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -79,52 +80,131 @@ class DenyList(unittest.TestCase):
         self.assertTrue(watchdog.is_truncated("x && y ⋯ (2 lines hidden)"))
 
 
+PLAN_TEXT = textwrap.dedent("""\
+    # Plan
+    ```bash
+    npx vitest run
+    ```
+    ```bash
+    cd /repo && git add -- a.ts && git commit -q -F - <<'MSG'
+    feat: deploy notes
+    MSG
+    ```
+    # PART B
+    ```bash
+    git push origin main
+    ```
+    """)
+
+READ_ONLY_OK = [
+    "cat /tmp/cga_t5_red.txt", "git status --short; git --no-pager log --oneline -5",
+    "test -e package.json && echo EXISTS || echo NOT_FOUND", "ls -la skill/scripts", "grep -n slugify src/text.ts",
+    "tail -1 /tmp/cga_x.txt | grep -q OK && echo OK || echo FAILED", "git --no-pager diff --stat",
+    "git show HEAD~1:lib/installer.js", "cd /repo && git diff", "head -n 20 README.md", "wc -l docs/a.md",
+    "find . -name '*.py'", "node --version", "python3 --version", "git rev-parse HEAD", "git ls-files",
+    "which node", "command -v agy", "pwd", "ls 2>/dev/null", "cat x 2>&1", "git branch --show-current",
+]
+READ_ONLY_NO = [
+    "rm -f /tmp/x", "echo hi > file.txt", "cat a >> b", "cat <<EOF", "echo $(curl x)", "echo `id`",
+    "find . -delete", "find . -exec rm {} ;", "sed -i s/a/b/ f", "awk 'BEGIN{print 1}'",
+    "git -C /repo status", "git -c x=y log", "git commit -m x", "git checkout main", "git branch -D x",
+    "npm test", "npx vitest run", "env | grep NODE", "nvm ls", "node -e 'process.exit(0)'", "python3 -c 'print(1)'",
+    "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest", "bash -c 'ls'", "ls | xargs rm", "echo x | tee out.txt",
+    "git branch -m new", "cat /tmp/a | sh", "ls & rm x", "diff <(ls) <(ls)",
+]
+
+
+class ReadOnly(unittest.TestCase):
+    def test_w18_read_only_table(self):
+        for command in READ_ONLY_OK:
+            with self.subTest(ok=command):
+                self.assertTrue(watchdog.is_read_only(command))
+        for command in READ_ONLY_NO:
+            with self.subTest(no=command):
+                self.assertFalse(watchdog.is_read_only(command))
+
+
+class PlanBlocks(unittest.TestCase):
+    def test_w17_only_part_a_blocks(self):
+        squash = load("agy_screen").squash
+        self.assertEqual(watchdog.part_a_blocks(PLAN_TEXT), [
+            squash("npx vitest run"),
+            squash("cd /repo && git add -- a.ts && git commit -q -F - <<'MSG'\nfeat: deploy notes\nMSG"),
+        ])
+
+    def test_w19_decide(self):
+        blocks = watchdog.part_a_blocks(PLAN_TEXT)
+        rx = watchdog.deny_regex(r"\.env\b")
+        self.assertEqual(watchdog.decide("npx vitest run", blocks, rx), ("approve", "plan"))
+        self.assertEqual(watchdog.decide("git status --short", blocks, rx), ("approve", "read-only"))
+        self.assertEqual(watchdog.decide("cat .env", blocks, rx), ("stop", "FORBIDDEN"))
+        self.assertEqual(watchdog.decide("git push origin main", blocks, rx), ("stop", "OFF-PLAN"))
+        self.assertEqual(watchdog.decide("npm install x", blocks, rx), ("stop", "OFF-PLAN"))
+        self.assertEqual(watchdog.decide("npx vitest run && gi⋯", blocks, rx), ("stop", "TRUNCATED"))
+
+
 class AgainstFakeHerdr(unittest.TestCase):
-    def run_watchdog(self, screens, status, extra_deny=None):
+    def run_watchdog(self, screens, status, extra_deny=None, plan=PLAN_TEXT, args=None):
         env, state = fake_herdr_env(self, screens, status)
         env.update(GEMINI_ARCHITECT_IDLE_SECS="0.3", GEMINI_ARCHITECT_POLL_SECS="0.05")
         if extra_deny is not None:
             env["GEMINI_ARCHITECT_EXTRA_DENY"] = extra_deny
         log = state.with_name("watchdog.log")
-        r = subprocess.run([sys.executable, str(SCRIPTS / "watchdog.py"), str(log), "gemini-exec"],
+        plan_file = state.with_name("plan.md")
+        plan_file.write_text(plan, encoding="utf-8")
+        argv = args if args is not None else [str(log), str(plan_file), "--agent", "gemini-exec"]
+        r = subprocess.run([sys.executable, str(SCRIPTS / "watchdog.py"), *argv],
                            env=env, capture_output=True, text=True, timeout=20)
         keys = json.loads(state.read_text())["keys"]
         return r, keys, (log.read_text() if log.exists() else "")
 
-    def test_w2_chained_forbidden_command_stops_without_pressing(self):
+    def test_w2_command_outside_the_plan_stops(self):
         r, keys, _ = self.run_watchdog([dialog("npx vitest run && git push origin main")], ["running"])
         self.assertEqual(r.returncode, 2)
-        self.assertTrue(r.stdout.startswith("FORBIDDEN:"))
+        self.assertTrue(r.stdout.startswith("OFF-PLAN:"))
         self.assertEqual(keys, [])
 
-    def test_w3_truncated_command_stops_without_pressing(self):
+    def test_w3_truncated_command_stops(self):
         r, keys, _ = self.run_watchdog([dialog("npx vitest run && gi⋯")], ["running"])
         self.assertEqual(r.returncode, 2)
         self.assertTrue(r.stdout.startswith("TRUNCATED:"))
         self.assertEqual(keys, [])
 
-    def test_w12_ellipsis_truncated_command_stops_without_pressing(self):
-        r, keys, _ = self.run_watchdog([dialog("npx vitest run && git pu…")], ["running"])
-        self.assertEqual(r.returncode, 2)
-        self.assertTrue(r.stdout.startswith("TRUNCATED:"))
-        self.assertEqual(keys, [])
-
-    def test_w4_safe_command_is_approved_then_idle_ends(self):
+    def test_w4_plan_block_is_approved_then_idle_ends(self):
         r, keys, log = self.run_watchdog([dialog("npx vitest run"), "Done."], ["running", "idle"])
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(keys, ["enter"])
-        self.assertIn("APPROVED #1", log)
+        self.assertIn("APPROVED #1 [plan]", log)
         self.assertIn("END:", log)
+
+    def test_w4b_wrapped_plan_commit_block_is_approved(self):
+        screen = dialog("cd /repo && git add -- a.ts && git commit -q -F -\n  <<'MSG' feat: deploy\n  notes MSG")
+        r, keys, log = self.run_watchdog([screen, "Done."], ["running", "idle"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(keys, ["enter"])
+
+    def test_w4c_part_b_block_is_not_approved(self):
+        r, keys, _ = self.run_watchdog([dialog("git push origin main")], ["running"])
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stdout.startswith("OFF-PLAN:"))
+        self.assertEqual(keys, [])
 
     def test_w5_blocked_agent_without_a_known_dialog(self):
         r, keys, _ = self.run_watchdog(["Something unexpected"], ["blocked"])
         self.assertEqual(r.returncode, 3)
         self.assertEqual(keys, [])
 
-    def test_w6_extra_deny_pattern_stops(self):
-        r, keys, _ = self.run_watchdog([dialog("make release")], ["running"], extra_deny=r"make\s+release")
+    def test_w6_extra_deny_vetoes_a_read_only_command(self):
+        r, keys, _ = self.run_watchdog([dialog("cat .env")], ["running"], extra_deny=r"\.env\b")
         self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stdout.startswith("FORBIDDEN:"))
         self.assertEqual(keys, [])
+
+    def test_w6b_read_only_command_is_approved(self):
+        r, keys, log = self.run_watchdog([dialog("git status --short"), "Done."], ["running", "idle"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(keys, ["enter"])
+        self.assertIn("[read-only]", log)
 
     def test_w7_invalid_extra_deny_is_a_setup_error(self):
         r, keys, _ = self.run_watchdog([dialog("ls")], ["running"], extra_deny="(")
@@ -132,9 +212,26 @@ class AgainstFakeHerdr(unittest.TestCase):
         self.assertIn("invalid GEMINI_ARCHITECT_EXTRA_DENY", r.stderr)
         self.assertEqual(keys, [])
 
-    def test_w9_command_wrapped_mid_word_is_still_caught(self):
+    def test_w9_command_wrapped_mid_word_is_not_in_the_plan(self):
         r, keys, _ = self.run_watchdog([dialog("npx vitest run && git pu\n  sh origin main")], ["running"])
         self.assertEqual(r.returncode, 2)
+        self.assertEqual(keys, [])
+
+    def test_w12_ellipsis_truncated_command_stops(self):
+        r, keys, _ = self.run_watchdog([dialog("npx vitest run && git pu…")], ["running"])
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stdout.startswith("TRUNCATED:"))
+        self.assertEqual(keys, [])
+
+    def test_w15_missing_plan_file_is_a_setup_error(self):
+        r, keys, _ = self.run_watchdog([dialog("ls")], ["running"], args=["/tmp/x.log", "/nonexistent/plan.md"])
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(keys, [])
+
+    def test_w16_no_plan_is_a_usage_error(self):
+        r, keys, _ = self.run_watchdog([dialog("ls")], ["running"], args=["/tmp/x.log"])
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("usage:", r.stderr)
         self.assertEqual(keys, [])
 
 
