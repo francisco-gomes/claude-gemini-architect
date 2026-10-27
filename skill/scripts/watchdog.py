@@ -17,13 +17,19 @@ import time
 from agy_screen import agent_status, pending_request, press, read_screen, squash
 
 BASE_DENY = (
-    r"git\s+(push|merge|rebase|reset|clean|branch\s+-D|stash|checkout\s+--|restore|switch)"
+    r"\bgit\s+(?:[^\s;&|]+\s+)*(?:push|merge|rebase|reset|clean|branch\s+-D|stash|restore|switch\b|checkout\s+--(?:\s|$))"
     r"|\bgh\s|docker|podman|kubectl|\bssh\s|\bscp\s|\brsync\s"
     r"|psql|mysql|mongosh?\b|redis-cli|sqlite3"
-    r"|\bmigrat(e|ions?)\b(?!\.)|(^|[\s/;&|])deploy(\.sh)?(\s|$)"
-    r"|\brm\s+-[a-z]*r|--force(\s|$)"
+    r"|\bmigrat(?:e|ions?)\b(?!\.(?:test|spec)\b)"
+    r"|(?:\b|/)deploy(?!\.(?:test|spec)\b)(?:[:;\"'\s-]|\.sh|$)"
+    r"|\brm\s+(?:-[^\s;&|]+\s+)*(-[a-zA-Z]*r[a-zA-Z]*|--recursive)\b"
+    r"|\bfind\s+.*?\s+-delete\b|--force(\s|$)"
     r"|\bcurl\s|\bwget\s"
     r"|\b(npm|pnpm|yarn|bun|pip3?|uv|cargo)\s+(install|add|i|uninstall|remove)\b"
+    r"|\b(?:nvm|fnm)\s+(?:install|use|alias|uninstall)\b"
+    r"|\bvolta\s+(?:install|pin)\b"
+    r"|\b(?:asdf|pyenv)\s+(?:install|global|local)\b"
+    r"|\bn\s+\d+"
     r"|\bsudo\b|\bkill\b|pkill"
 )
 

@@ -18,11 +18,19 @@ FORBIDDEN = [
     "npx typeorm migration:run", "psql -c 'delete from orders'", "rm -rf build", "rm -r dist",
     "npm install lodash", "pnpm add zod", "pip install requests", "curl https://example.com",
     "git checkout -- src/a.ts", "git restore src/a.ts", "git stash", "sudo ls", "kill 123", "ssh host",
+    "git -C /repo push origin main", "git --no-pager reset --hard HEAD~3", "git -c core.pager=cat push",
+    "./scripts/migrate.sh", "python migrate.py", "node db/migrate.js",
+    "npm run deploy:prod", "yarn deploy:staging", "./deploy-prod.sh", "./deploy.sh;echo done", 'sh -c "./deploy.sh"',
+    "rm -f -r src", "rm -v -rf build", "rm --recursive dist", "find . -name '*.tmp' -delete",
+    "nvm install 18", "nvm use 20", "fnm install 22", "volta install node@18", "asdf install nodejs 20.0.0",
+    "pyenv install 3.11", "n 18",
 ]
 ALLOWED = [
     "npx vitest run test/deploy.test.ts", "npx vitest run test/migration.test.ts", "git status --short",
     "git add -- src/a.ts", "git commit -q -F -", "npx tsc --noEmit", "git --no-pager log --oneline -1",
     "python3 -m pytest -q", "npm init -y",
+    "git -C /repo status --short", "git --no-pager diff --stat", "rm -f /tmp/cga_x.txt", "find . -name '*.py'",
+    "npm run lint", "nvm ls", "node --version",
 ]
 
 FAKE_HERDR = '''#!/usr/bin/env python3
