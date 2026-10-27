@@ -100,6 +100,7 @@ cp -r claude-gemini-architect/skill ~/.claude/skills/claude-gemini-architect
   ```bash
   export GEMINI_ARCHITECT_EXTRA_DENY='\.env\b|secrets/'
   ```
+- **What the watchdog is not:** it guards against an executor's mistakes and improvisation, not against a hostile model. A model that edits `.git/config` or writes a script, and then asks for a command the watchdog approves, can still run code. If you don't trust the executor, run it in a container or a VM.
 - **Production (Part B) is never automatic.** It starts only after you explicitly authorize merge and deploy, and it runs one step at a time, each result checked before the next.
 
 ## Does it really save tokens?

@@ -43,6 +43,8 @@ Ways to save more:
 
 Configuration: `GEMINI_ARCHITECT_EXTRA_DENY` (extra regex for the watchdog), `GEMINI_ARCHITECT_IDLE_SECS` (watchdog, default 45), `GEMINI_ARCHITECT_POLL_SECS` (watchdog default 3, next_block default 4) and `GEMINI_ARCHITECT_WAIT_SECS` (next_block, default 540: it prints `NO REQUEST YET` and you run it again).
 
+The watchdog prevents accidents, not attacks: quoted or escaped arguments, unknown commands and anything not in the plan stop it, but it cannot see what an approved `git status` does with a hook the executor wrote into `.git/config`. For an untrusted executor, use a container.
+
 ## The review
 
 Every commit, before it counts: scope (only the task's files?), tests run by Claude, the diff read against the contract, a grep for code that detects tests, justified changes to old tests, a few edge cases. The full checklist is in [`skill/references/review-checklist.md`](../skill/references/review-checklist.md).
