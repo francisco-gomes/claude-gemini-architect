@@ -101,9 +101,9 @@ READ_ONLY_OK = [
     "test -e package.json && echo EXISTS || echo NOT_FOUND", "ls -la skill/scripts", "grep -n slugify src/text.ts",
     "tail -1 /tmp/x.txt | grep -q OK && echo OK || echo FAILED", "git --no-pager diff --stat",
     "git show HEAD~1:lib/installer.js", "cd /repo && git diff", "head -n 20 README.md", "wc -l docs/a.md",
-    "find . -name '*.py'", "node --version", "python3 --version", "git rev-parse HEAD", "git ls-files",
+    "find . -name *.py", "node --version", "python3 --version", "git rev-parse HEAD", "git ls-files",
     "which node", "command -v agy", "pwd", "ls 2>/dev/null", "cat x 2>&1", "git branch --show-current",
-    "git log --oneline | sort | uniq -c", "sort a.txt",
+    "ls >/dev/null", "git status --short 2>&1", "grep -rn foo src | head -5",
 ]
 READ_ONLY_NO = [
     "rm -f /tmp/x", "echo hi > file.txt", "cat a >> b", "cat <<EOF", "echo $(curl x)", "echo `id`",
@@ -114,6 +114,9 @@ READ_ONLY_NO = [
     "git branch -m new", "cat /tmp/a | sh", "ls & rm x", "diff <(ls) <(ls)",
     "cat x\nrm -rf y", "ls\ngit push", "sort -o /tmp/out a", "uniq a b", "file -C -m x",
     "git log --output=/tmp/x", "git diff --output=src/a.ts", "find . -fprint0 x",
+    'find . "-delete"', "find . -name x -ex'ec' python3 -c 1 {} +", "find . ${X}-delete", "find . -fprint\\ x",
+    "git log --oneline | sort | uniq -c", "sort a.txt", "git log '--output=x'", "git diff --ext-diff",
+    "echo hi >/dev/null.x", "uniq -- in -out", "tail -f log", "tail --follow=name x", "grep -n 'a b' f",
 ]
 
 
@@ -131,8 +134,8 @@ class PlanBlocks(unittest.TestCase):
     def test_w17_only_part_a_blocks(self):
         squash = load("agy_screen").squash
         self.assertEqual(watchdog.part_a_blocks(PLAN_TEXT), [
-            squash("npx vitest run"),
-            squash("cd /repo && git add -- a.ts && git commit -q -F - <<'MSG'\nfeat: deploy notes\nMSG"),
+            " ".join(("npx vitest run").split()),
+            " ".join(("cd /repo && git add -- a.ts && git commit -q -F - <<'MSG'\nfeat: deploy notes\nMSG").split()),
         ])
 
     def test_w19_decide(self):
@@ -144,6 +147,14 @@ class PlanBlocks(unittest.TestCase):
         self.assertEqual(watchdog.decide("git push origin main", blocks, rx), ("stop", "OFF-PLAN"))
         self.assertEqual(watchdog.decide("npm install x", blocks, rx), ("stop", "OFF-PLAN"))
         self.assertEqual(watchdog.decide("npx vitest run && gi⋯", blocks, rx), ("stop", "TRUNCATED"))
+
+    def test_w20_plan_match_keeps_token_boundaries(self):
+        plan = "```bash\nrm -rf build/ tmp\n```\n"
+        blocks = watchdog.part_a_blocks(plan)
+        rx = watchdog.deny_regex()
+        self.assertEqual(watchdog.decide("rm -rf build/ tmp", blocks, rx), ("approve", "plan"))
+        self.assertEqual(watchdog.decide("rm -rf build/tmp", blocks, rx), ("stop", "OFF-PLAN"))
+        self.assertEqual(watchdog.decide("rm -r fbuild/ tmp", blocks, rx), ("stop", "OFF-PLAN"))
 
 
 class AgainstFakeHerdr(unittest.TestCase):

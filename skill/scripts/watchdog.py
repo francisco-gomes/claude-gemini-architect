@@ -42,7 +42,7 @@ BASE_DENY = (
 )
 
 SIMPLE_READ_ONLY = {
-    "cd", "cat", "head", "tail", "wc", "ls", "pwd", "echo",
+    "cd", "cat", "head", "wc", "ls", "pwd", "echo",
     "grep", "test", "true", "stat", "cut", "tr", "diff", "which",
 }
 
@@ -75,20 +75,20 @@ def is_forbidden(request, rx):
 def part_a_blocks(text):
     heading = PART_B.search(text)
     part_a = text[:heading.start()] if heading else text
-    return [squash(b) for b in BASH_BLOCK.findall(part_a)]
+    return [" ".join(b.split()) for b in BASH_BLOCK.findall(part_a)]
 
 
 def is_segment_allowed(seg):
+    if any(c in seg for c in ("'", '"', "\\", "$", "`")):
+        return False
     tokens = seg.split()
     if not tokens:
         return False
     first = tokens[0]
     if first in SIMPLE_READ_ONLY:
         return True
-    if first == "sort":
-        return not any(t == "-o" or t.startswith("-o") or t.startswith("--output") for t in tokens[1:])
-    if first == "uniq":
-        return len([t for t in tokens[1:] if not t.startswith("-")]) <= 1
+    if first == "tail":
+        return not any(t in ("-f", "-F") or t.startswith("--follow") for t in tokens[1:])
     if first == "command":
         return len(tokens) >= 2 and tokens[1] == "-v"
     if first == "node":
@@ -98,7 +98,7 @@ def is_segment_allowed(seg):
     if first == "find":
         return not any(t in FORBIDDEN_FIND for t in tokens[1:])
     if first == "git":
-        if any(t.startswith("--output") for t in tokens[1:]):
+        if any(t.startswith("--output") or t.startswith("--ext-diff") for t in tokens[1:]):
             return False
         idx = 1
         if idx < len(tokens) and tokens[idx] == "--no-pager":
@@ -118,8 +118,7 @@ def is_read_only(command):
     if any(bad in command for bad in ("$(", "`", "<<", "<(")):
         return False
     cleaned = command.strip()
-    for r in ("2>&1", "2>/dev/null", "> /dev/null", ">/dev/null"):
-        cleaned = cleaned.replace(r, " ")
+    cleaned = re.sub(r"(?:2>&1|2>/dev/null|>\s*/dev/null)(?=\s|$)", " ", cleaned)
     if ">" in cleaned:
         return False
     segments = [s.strip() for s in re.split(r"&&|\|\||[;&|\n]", cleaned)]
@@ -131,7 +130,7 @@ def is_read_only(command):
 def decide(request, plan_blocks, rx):
     if is_truncated(request):
         return ("stop", "TRUNCATED")
-    if squash(request) in plan_blocks:
+    if " ".join(request.split()) in plan_blocks:
         return ("approve", "plan")
     if is_read_only(request):
         if not is_forbidden(request, rx):
