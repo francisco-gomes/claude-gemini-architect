@@ -15,15 +15,16 @@ import shutil
 import sys
 import time
 
-from agy_screen import REQ_END, agent_status, pending_request, read_screen, squash
+from agy_screen import REQ_END, agent_status, is_truncated, pending_request, read_screen, squash
 
 
 def match_blocks(request, blocks):
     """Indexes of the (squashed) blocks the request can be. A truncated request matches by prefix."""
-    visible = squash(request.split("⋯")[0])
-    truncated = "⋯" in request or visible.endswith("....")
+    truncated = is_truncated(request)
+    first_ellipsis = re.split(r"[⋯…]", request)[0]
+    visible = squash(first_ellipsis)
     if truncated:
-        visible = visible.rstrip(".…")
+        visible = visible.rstrip(".")
     if not visible:
         return []
     return [i for i, b in enumerate(blocks) if visible == b or (truncated and b.startswith(visible))]

@@ -35,3 +35,8 @@ def pending_request(screen):
 
 def squash(text):
     return re.sub(r"\s", "", text)
+
+
+def is_truncated(request):
+    """True when the dialog shows only part of the command, so it can't be checked."""
+    return "⋯" in request or "…" in request or squash(request).endswith("...")

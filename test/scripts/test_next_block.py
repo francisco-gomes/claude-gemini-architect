@@ -48,6 +48,12 @@ class Describe(unittest.TestCase):
     def test_n8_trailing_dot_kept_when_not_truncated(self):
         self.assertEqual(self.describe("git log ."), "REQUEST: B3")
 
+    def test_n9_unicode_ellipsis_is_truncation_too(self):
+        self.assertEqual(self.describe("gh pr merge feat-x --merge --subject 'feat: x' > /tmp/pB_m…"), "REQUEST: B1")
+
+    def test_n10_truncation_rule_is_shared(self):
+        self.assertIs(next_block.is_truncated, agy_screen.is_truncated)
+
 
 if __name__ == "__main__":
     unittest.main()

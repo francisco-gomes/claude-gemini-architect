@@ -74,6 +74,14 @@ class DenyList(unittest.TestCase):
         self.assertTrue(watchdog.is_truncated("npx vitest run && gi⋯"))
         self.assertFalse(watchdog.is_truncated("npx vitest run"))
 
+    def test_w11_ellipsis_and_three_dots_are_truncation(self):
+        self.assertTrue(watchdog.is_truncated("npx vitest run && git pu…"))
+        self.assertTrue(watchdog.is_truncated("npx vitest run && git pu..."))
+        self.assertFalse(watchdog.is_truncated("git log ."))
+
+    def test_w13_truncation_rule_is_shared(self):
+        self.assertIs(watchdog.is_truncated, load("agy_screen").is_truncated)
+
 
 class AgainstFakeHerdr(unittest.TestCase):
     def run_watchdog(self, screens, status, extra_deny=None):
@@ -104,6 +112,12 @@ class AgainstFakeHerdr(unittest.TestCase):
 
     def test_w3_truncated_command_stops_without_pressing(self):
         r, keys, _ = self.run_watchdog([dialog("npx vitest run && gi⋯")], ["running"])
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stdout.startswith("TRUNCATED:"))
+        self.assertEqual(keys, [])
+
+    def test_w12_ellipsis_truncated_command_stops_without_pressing(self):
+        r, keys, _ = self.run_watchdog([dialog("npx vitest run && git pu…")], ["running"])
         self.assertEqual(r.returncode, 2)
         self.assertTrue(r.stdout.startswith("TRUNCATED:"))
         self.assertEqual(keys, [])

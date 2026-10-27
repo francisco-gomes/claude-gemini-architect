@@ -14,7 +14,7 @@ import shutil
 import sys
 import time
 
-from agy_screen import agent_status, pending_request, press, read_screen, squash
+from agy_screen import agent_status, is_truncated, pending_request, press, read_screen, squash
 
 BASE_DENY = (
     r"\bgit\s+(?:[^\s;&|]+\s+)*(?:push|merge|rebase|reset|clean|branch\s+-D|stash|restore|switch\b|checkout\s+--(?:\s|$))"
@@ -48,11 +48,6 @@ def variants(request):
 
 def is_forbidden(request, rx):
     return any(rx.search(v) for v in variants(request))
-
-
-def is_truncated(request):
-    """True when the dialog shows only part of the command, so it can't be checked."""
-    return "⋯" in request or squash(request).endswith("....")
 
 
 def log(path, message):
