@@ -23,10 +23,16 @@ from agy_screen import REQ_END, agent_status, is_truncated, pending_request, rea
 def match_blocks(request, blocks):
     """Indexes of the (squashed) blocks the request can be. A truncated request matches by prefix."""
     truncated = is_truncated(request)
-    first_ellipsis = re.split(r"[⋯…]", request)[0]
-    visible = squash(first_ellipsis)
     if truncated:
-        visible = visible.rstrip(".")
+        if "⋯" in request:
+            raw_visible = request.split("⋯")[0]
+        else:
+            raw_visible = request.rstrip()
+            if raw_visible.endswith("…"):
+                raw_visible = raw_visible[:-1]
+        visible = squash(raw_visible).rstrip(".")
+    else:
+        visible = squash(request)
     if not visible:
         return []
     return [i for i, b in enumerate(blocks) if visible == b or (truncated and b.startswith(visible))]

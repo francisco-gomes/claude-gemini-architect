@@ -58,6 +58,10 @@ class Describe(unittest.TestCase):
     def test_n10_truncation_rule_is_shared(self):
         self.assertIs(next_block.is_truncated, agy_screen.is_truncated)
 
+    def test_n13_ellipsis_inside_a_full_command_is_not_truncation(self):
+        block = 'git commit -m "wip…" && echo OK'
+        self.assertEqual(next_block.describe(block, [agy_screen.squash(block)]), "REQUEST: B0")
+
 
 class AgainstFakeHerdr(unittest.TestCase):
     def run_next_block(self, screens, status, blocks):

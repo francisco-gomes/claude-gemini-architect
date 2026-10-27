@@ -67,11 +67,16 @@ class DenyList(unittest.TestCase):
 
     def test_w11_ellipsis_and_three_dots_are_truncation(self):
         self.assertTrue(watchdog.is_truncated("npx vitest run && git pu…"))
-        self.assertTrue(watchdog.is_truncated("npx vitest run && git pu..."))
+        self.assertTrue(watchdog.is_truncated("npx vitest run && git pu...."))
         self.assertFalse(watchdog.is_truncated("git log ."))
 
     def test_w13_truncation_rule_is_shared(self):
         self.assertIs(watchdog.is_truncated, load("agy_screen").is_truncated)
+
+    def test_w14_no_false_truncation(self):
+        self.assertFalse(watchdog.is_truncated("go test ./..."))
+        self.assertFalse(watchdog.is_truncated('git commit -m "wip…" && echo OK'))
+        self.assertTrue(watchdog.is_truncated("x && y ⋯ (2 lines hidden)"))
 
 
 class AgainstFakeHerdr(unittest.TestCase):
