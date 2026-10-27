@@ -29,7 +29,7 @@ BASE_DENY = (
     r"|\b(?:nvm|fnm)\s+(?:install|use|alias|uninstall)\b"
     r"|\bvolta\s+(?:install|pin)\b"
     r"|\b(?:asdf|pyenv)\s+(?:install|global|local)\b"
-    r"|\bn\s+\d+"
+    r"|(?:^|[;&|])\s*n\s+(?:\d+|lts|latest)\b"
     r"|\bsudo\b|\bkill\b|pkill"
 )
 

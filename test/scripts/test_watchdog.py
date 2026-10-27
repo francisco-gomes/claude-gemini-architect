@@ -25,6 +25,7 @@ FORBIDDEN = [
     "rm -f -r src", "rm -v -rf build", "rm --recursive dist", "find . -name '*.tmp' -delete",
     "nvm install 18", "nvm use 20", "fnm install 22", "volta install node@18", "asdf install nodejs 20.0.0",
     "pyenv install 3.11", "n 18",
+    "cd /r && n 20", "true; n lts",
 ]
 ALLOWED = [
     "npx vitest run test/deploy.test.ts", "npx vitest run test/migration.test.ts", "git status --short",
@@ -32,6 +33,7 @@ ALLOWED = [
     "python3 -m pytest -q", "npm init -y",
     "git -C /repo status --short", "git --no-pager diff --stat", "rm -f /tmp/cga_x.txt", "find . -name '*.py'",
     "npm run lint", "nvm ls", "node --version",
+    "head -n 5 /tmp/x.txt", "git --no-pager log -n 3 --oneline", "tail -n 20 /tmp/cga_x.txt",
 ]
 
 def dialog(command):
