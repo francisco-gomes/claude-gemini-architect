@@ -136,3 +136,20 @@ test('U10 __pycache__ and .pyc files are not copied', async () => {
     assert.ok(!fs.existsSync(path.join(target, 'scripts', '__pycache__')));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('U11 staging lives outside skills/ and stale leftovers are cleaned', async () => {
+  const root = scratch();
+  try {
+    const base = path.join(root, 'cfg');
+    const target = path.join(base, 'skills', SKILL_NAME);
+    fs.mkdirSync(path.join(base, `.${SKILL_NAME}.tmp-999`), { recursive: true });
+    fs.mkdirSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-999`), { recursive: true });
+    fs.writeFileSync(path.join(base, 'skills', `${SKILL_NAME}.tmp-999`, 'SKILL.md'), 'stale');
+    const seen = [];
+    const spyCopy = (src, dst) => { seen.push(dst); fs.cpSync(src, dst, { recursive: true }); };
+    await install({ source: makeSource(root), target, version: '1.0.0', copy: spyCopy });
+    assert.equal(path.dirname(seen[0]), base);
+    assert.deepEqual(fs.readdirSync(path.join(base, 'skills')), [SKILL_NAME]);
+    assert.deepEqual(fs.readdirSync(base).sort(), ['skills']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
