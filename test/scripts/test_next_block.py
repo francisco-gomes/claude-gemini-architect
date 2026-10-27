@@ -83,6 +83,18 @@ class AgainstFakeHerdr(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(r.stdout.splitlines()[0].startswith("NO REQUEST YET"))
 
+    def test_n14_reads_the_screen_at_least_once_even_with_a_tiny_deadline(self):
+        block = "ls -la"
+        env_wait = {"GEMINI_ARCHITECT_WAIT_SECS": "0.01"}
+        env, state = fake_herdr_env(self, [dialog(block)], ["running"])
+        env.update(GEMINI_ARCHITECT_POLL_SECS="0.05", **env_wait)
+        blocks_file = state.with_name("blocks.json")
+        blocks_file.write_text(json.dumps([block]))
+        r = subprocess.run([sys.executable, str(SCRIPTS / "next_block.py"), str(blocks_file), "gemini-exec"],
+                           env=env, capture_output=True, text=True, timeout=20)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[0], "REQUEST: B0")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,11 +72,7 @@ def main(argv):
     poll = float(os.environ.get("GEMINI_ARCHITECT_POLL_SECS", "4"))
     wait_secs = float(os.environ.get("GEMINI_ARCHITECT_WAIT_SECS", "540"))
     start = time.monotonic()
-    time.sleep(1.5 * poll)
     while True:
-        if time.monotonic() - start >= wait_secs:
-            print(f"NO REQUEST YET (waited {int(wait_secs)}s; run it again)")
-            break
         screen = read_screen(agent, "visible", 80)
         request = pending_request(screen)
         if request is not None:
@@ -84,6 +80,9 @@ def main(argv):
             break
         if gemini_stopped(agent, screen, poll):
             print("GEMINI STOPPED (no pending request)")
+            break
+        if time.monotonic() - start >= wait_secs:
+            print(f"NO REQUEST YET (waited {int(wait_secs)}s; run it again)")
             break
         remaining = wait_secs - (time.monotonic() - start)
         time.sleep(max(0.0, min(poll, remaining)))
