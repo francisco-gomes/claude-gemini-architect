@@ -85,13 +85,8 @@ def main(argv):
         if gemini_stopped(agent, screen, poll):
             print("GEMINI STOPPED (no pending request)")
             break
-        if time.monotonic() - start + poll >= wait_secs:
-            remaining = wait_secs - (time.monotonic() - start)
-            if remaining > 0:
-                time.sleep(remaining)
-            print(f"NO REQUEST YET (waited {int(wait_secs)}s; run it again)")
-            break
-        time.sleep(poll)
+        remaining = wait_secs - (time.monotonic() - start)
+        time.sleep(max(0.0, min(poll, remaining)))
     recent = read_screen(agent, "recent-unwrapped", 60)
     print("last OK/FAILED:", re.findall(r"^\s*(OK|FAILED)\s*$", recent, re.M)[-3:])
     return 0
