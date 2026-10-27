@@ -43,13 +43,12 @@ BASE_DENY = (
 
 SIMPLE_READ_ONLY = {
     "cd", "cat", "head", "tail", "wc", "ls", "pwd", "echo",
-    "grep", "test", "true", "stat", "file", "sort", "uniq",
-    "cut", "tr", "diff", "which",
+    "grep", "test", "true", "stat", "cut", "tr", "diff", "which",
 }
 
 FORBIDDEN_FIND = {
     "-delete", "-exec", "-execdir", "-ok", "-okdir",
-    "-fprint", "-fprintf", "-fls",
+    "-fprint", "-fprint0", "-fprintf", "-fls",
 }
 
 GIT_READ_ONLY = {
@@ -86,6 +85,10 @@ def is_segment_allowed(seg):
     first = tokens[0]
     if first in SIMPLE_READ_ONLY:
         return True
+    if first == "sort":
+        return not any(t == "-o" or t.startswith("-o") or t.startswith("--output") for t in tokens[1:])
+    if first == "uniq":
+        return len([t for t in tokens[1:] if not t.startswith("-")]) <= 1
     if first == "command":
         return len(tokens) >= 2 and tokens[1] == "-v"
     if first == "node":
@@ -95,6 +98,8 @@ def is_segment_allowed(seg):
     if first == "find":
         return not any(t in FORBIDDEN_FIND for t in tokens[1:])
     if first == "git":
+        if any(t.startswith("--output") for t in tokens[1:]):
+            return False
         idx = 1
         if idx < len(tokens) and tokens[idx] == "--no-pager":
             idx += 1
@@ -112,12 +117,12 @@ def is_segment_allowed(seg):
 def is_read_only(command):
     if any(bad in command for bad in ("$(", "`", "<<", "<(")):
         return False
-    cleaned = command
+    cleaned = command.strip()
     for r in ("2>&1", "2>/dev/null", "> /dev/null", ">/dev/null"):
         cleaned = cleaned.replace(r, " ")
     if ">" in cleaned:
         return False
-    segments = [s.strip() for s in re.split(r"&&|\|\||[;&|]", cleaned)]
+    segments = [s.strip() for s in re.split(r"&&|\|\||[;&|\n]", cleaned)]
     if not segments or any(not s for s in segments):
         return False
     return all(is_segment_allowed(s) for s in segments)
