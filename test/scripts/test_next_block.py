@@ -1,7 +1,11 @@
 """Tests for skill/scripts/next_block.py and agy_screen.py."""
+import json
+import subprocess
+import sys
 import unittest
 
-from _load import load
+from _fake_herdr import fake_herdr_env
+from _load import SCRIPTS, load
 
 agy_screen = load("agy_screen")
 next_block = load("next_block")
@@ -53,6 +57,27 @@ class Describe(unittest.TestCase):
 
     def test_n10_truncation_rule_is_shared(self):
         self.assertIs(next_block.is_truncated, agy_screen.is_truncated)
+
+
+class AgainstFakeHerdr(unittest.TestCase):
+    def run_next_block(self, screens, status, blocks):
+        env, state = fake_herdr_env(self, screens, status)
+        env.update(GEMINI_ARCHITECT_POLL_SECS="0.05", GEMINI_ARCHITECT_WAIT_SECS="0.5")
+        blocks_file = state.with_name("blocks.json")
+        blocks_file.write_text(json.dumps(blocks))
+        return subprocess.run([sys.executable, str(SCRIPTS / "next_block.py"), str(blocks_file), "gemini-exec"],
+                              env=env, capture_output=True, text=True, timeout=20)
+
+    def test_n11_request_for_a_script_block(self):
+        block = "cd /repo && git status --short && echo OK || echo FAILED"
+        r = self.run_next_block([dialog(block)], ["running"], [block])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[0], "REQUEST: B0")
+
+    def test_n12_bounded_wait_reports_no_request(self):
+        r = self.run_next_block(["Working on it... running tests"], ["working"], ["ls"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(r.stdout.splitlines()[0].startswith("NO REQUEST YET"))
 
 
 if __name__ == "__main__":

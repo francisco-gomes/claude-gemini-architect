@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from _fake_herdr import fake_herdr_env
 from _load import SCRIPTS, load
 
 watchdog = load("watchdog")
@@ -32,24 +33,6 @@ ALLOWED = [
     "git -C /repo status --short", "git --no-pager diff --stat", "rm -f /tmp/cga_x.txt", "find . -name '*.py'",
     "npm run lint", "nvm ls", "node --version",
 ]
-
-FAKE_HERDR = '''#!/usr/bin/env python3
-import json, os, sys
-path = os.environ["FAKE_HERDR_STATE"]
-with open(path) as f:
-    state = json.load(f)
-args = sys.argv[1:]
-if args[:2] == ["agent", "read"]:
-    print(state["screens"][state["i"]])
-elif args[:2] == ["agent", "get"]:
-    print(json.dumps({"result": {"agent": {"agent_status": state["status"][state["i"]]}}}))
-elif args[:2] == ["agent", "send-keys"]:
-    state["keys"].append(args[3])
-    state["i"] = min(state["i"] + 1, len(state["screens"]) - 1)
-    with open(path, "w") as f:
-        json.dump(state, f)
-'''
-
 
 def dialog(command):
     return f"Requesting permission for:\n  {command}\nRun this command?\n> Yes  No"
@@ -85,20 +68,11 @@ class DenyList(unittest.TestCase):
 
 class AgainstFakeHerdr(unittest.TestCase):
     def run_watchdog(self, screens, status, extra_deny=None):
-        d = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, d)
-        herdr = Path(d, "herdr")
-        herdr.write_text(FAKE_HERDR)
-        herdr.chmod(0o755)
-        state = Path(d, "state.json")
-        state.write_text(json.dumps({"screens": screens, "status": status, "i": 0, "keys": []}))
-        log = Path(d, "watchdog.log")
-        env = {**os.environ, "PATH": d + os.pathsep + os.environ["PATH"], "FAKE_HERDR_STATE": str(state),
-               "GEMINI_ARCHITECT_IDLE_SECS": "0.3", "GEMINI_ARCHITECT_POLL_SECS": "0.05",
-               "PYTHONDONTWRITEBYTECODE": "1"}
-        env.pop("GEMINI_ARCHITECT_EXTRA_DENY", None)
+        env, state = fake_herdr_env(self, screens, status)
+        env.update(GEMINI_ARCHITECT_IDLE_SECS="0.3", GEMINI_ARCHITECT_POLL_SECS="0.05")
         if extra_deny is not None:
             env["GEMINI_ARCHITECT_EXTRA_DENY"] = extra_deny
+        log = state.with_name("watchdog.log")
         r = subprocess.run([sys.executable, str(SCRIPTS / "watchdog.py"), str(log), "gemini-exec"],
                            env=env, capture_output=True, text=True, timeout=20)
         keys = json.loads(state.read_text())["keys"]

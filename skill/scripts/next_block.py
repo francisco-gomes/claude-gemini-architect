@@ -5,11 +5,13 @@ of the script it is. It NEVER approves anything: the architect approves with
 
 Usage: python3 next_block.py <blocks.json> [agent-name]   (blocks.json comes from extract_blocks.py)
 Output: "REQUEST: B3" | "REQUEST: B3|B4 (truncated, ambiguous)" | "REQUEST: OFF-SCRIPT: ..." |
-        "GEMINI STOPPED (no pending request)", then "last OK/FAILED: [...]".
+        "GEMINI STOPPED (no pending request)" | "NO REQUEST YET (...)", then "last OK/FAILED: [...]".
+Environment: GEMINI_ARCHITECT_POLL_SECS (default 4), GEMINI_ARCHITECT_WAIT_SECS (default 540).
 WARNING: "last OK/FAILED" can show a false FAILED (the `|| echo FAILED` text of the command itself, wrapped on
 screen). The real output of the step (/tmp/<prefix>_* files) decides.
 Exit codes: 0 done, 1 herdr not found, 2 wrong usage."""
 import json
+import os
 import re
 import shutil
 import sys
@@ -44,10 +46,10 @@ def looks_idle(status, screen):
             and "running" not in screen and REQ_END not in screen)
 
 
-def gemini_stopped(agent, screen):
+def gemini_stopped(agent, screen, poll):
     if not looks_idle(agent_status(agent), screen):
         return False
-    time.sleep(8)
+    time.sleep(2 * poll)
     return looks_idle(agent_status(agent), read_screen(agent, "visible", 80))
 
 
@@ -61,17 +63,29 @@ def main(argv):
     with open(argv[1], encoding="utf-8") as f:
         blocks = [squash(b) for b in json.load(f)]
     agent = argv[2] if len(argv) == 3 else "gemini-exec"
-    time.sleep(6)
-    for _ in range(400):
+    poll = float(os.environ.get("GEMINI_ARCHITECT_POLL_SECS", "4"))
+    wait_secs = float(os.environ.get("GEMINI_ARCHITECT_WAIT_SECS", "540"))
+    start = time.monotonic()
+    time.sleep(1.5 * poll)
+    while True:
+        if time.monotonic() - start >= wait_secs:
+            print(f"NO REQUEST YET (waited {int(wait_secs)}s; run it again)")
+            break
         screen = read_screen(agent, "visible", 80)
         request = pending_request(screen)
         if request is not None:
             print(describe(request, blocks))
             break
-        if gemini_stopped(agent, screen):
+        if gemini_stopped(agent, screen, poll):
             print("GEMINI STOPPED (no pending request)")
             break
-        time.sleep(4)
+        if time.monotonic() - start + poll >= wait_secs:
+            remaining = wait_secs - (time.monotonic() - start)
+            if remaining > 0:
+                time.sleep(remaining)
+            print(f"NO REQUEST YET (waited {int(wait_secs)}s; run it again)")
+            break
+        time.sleep(poll)
     recent = read_screen(agent, "recent-unwrapped", 60)
     print("last OK/FAILED:", re.findall(r"^\s*(OK|FAILED)\s*$", recent, re.M)[-3:])
     return 0
