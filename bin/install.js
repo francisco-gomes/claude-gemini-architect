@@ -5,7 +5,7 @@ import path from 'node:path';
 import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { HELP, parseArgs, UsageError } from '../lib/args.js';
-import { InstallError, install, targetDir, uninstall } from '../lib/installer.js';
+import { InstallError, install, targetDir, uninstall, findBackups } from '../lib/installer.js';
 import { checkRequirements } from '../lib/requirements.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -77,6 +77,9 @@ async function main(argv) {
     return 0;
   }
   console.log(green(`${result === 'updated' ? 'Updated' : 'Installed'} claude-gemini-architect ${version} at ${target}`));
+  for (const b of findBackups(target)) {
+    console.log(`Note: a backup of a previous installation is at ${b}; delete it when you no longer need it.`);
+  }
   const mode = process.env.HERDR_ENV === '1'
     ? 'herdr mode (Gemini in a pane next to Claude)'
     : 'terminal mode (Gemini edits files, Claude runs the commands)';

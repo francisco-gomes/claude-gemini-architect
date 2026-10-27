@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { install, uninstall, targetDir, readMarker, InstallError, SKILL_NAME, MARKER } from '../lib/installer.js';
+import { install, uninstall, targetDir, readMarker, InstallError, SKILL_NAME, MARKER, findBackups } from '../lib/installer.js';
 
 function scratch() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'cga-unit-'));
@@ -204,7 +204,7 @@ test('U14 leftovers of an installer that is still running are kept', async () =>
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('U15 an orphan backup from a killed install is restored before anything else', async () => {
+test('U15 an orphan backup is kept, never restored or deleted, and reported', async () => {
   const root = scratch();
   try {
     const base = path.join(root, 'cfg');
@@ -212,8 +212,9 @@ test('U15 an orphan backup from a killed install is restored before anything els
     const bak = path.join(base, `.${SKILL_NAME}.bak-${deadPid()}`);
     oldInstall(bak, '0.0.1');
     fs.mkdirSync(path.join(base, 'skills'), { recursive: true });
-    await assert.rejects(install({ source: makeSource(root), target, version: '1.0.0' }), /--force/);
-    assert.equal(readMarker(target).version, '0.0.1');
-    assert.ok(!fs.existsSync(bak));
+    assert.equal(await install({ source: makeSource(root), target, version: '1.0.0' }), 'installed');
+    assert.equal(readMarker(target).version, '1.0.0');
+    assert.ok(fs.existsSync(bak));
+    assert.deepEqual(findBackups(target), [bak]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
