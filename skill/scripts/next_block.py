@@ -72,6 +72,7 @@ def main(argv):
     poll = float(os.environ.get("GEMINI_ARCHITECT_POLL_SECS", "4"))
     wait_secs = float(os.environ.get("GEMINI_ARCHITECT_WAIT_SECS", "540"))
     start = time.monotonic()
+    time.sleep(min(1.5 * poll, wait_secs))
     while True:
         screen = read_screen(agent, "visible", 80)
         request = pending_request(screen)

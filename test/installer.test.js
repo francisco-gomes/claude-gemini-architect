@@ -218,3 +218,17 @@ test('U15 an orphan backup is kept, never restored or deleted, and reported', as
     assert.deepEqual(findBackups(target), [bak]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('U16 a backup name already taken does not block an update', async () => {
+  const root = scratch();
+  try {
+    const base = path.join(root, 'cfg');
+    const target = path.join(base, 'skills', SKILL_NAME);
+    oldInstall(target, '0.0.1');
+    const taken = path.join(base, `.${SKILL_NAME}.bak-${process.pid}`);
+    oldInstall(taken, '0.0.0');
+    assert.equal(await install({ source: makeSource(root), target, version: '1.0.0', force: true }), 'updated');
+    assert.equal(readMarker(target).version, '1.0.0');
+    assert.ok(fs.existsSync(taken));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
