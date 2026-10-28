@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-28)
 
 - First public version of the skill, generalized from a private workflow used in production.
 - Lean `SKILL.md` plus on-demand references (plan template, terminal mode, herdr mode, review checklist), tested with pressure scenarios (`skill-tests/`).
