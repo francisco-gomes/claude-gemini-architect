@@ -1,6 +1,6 @@
 {
   "name": "claude-gemini-architect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Save Claude tokens: Claude designs the plan, Gemini does the heavy lifting through Antigravity (agy), and Claude reviews the diff.",
   "type": "module",
   "bin": {
@@ -15,7 +15,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test --test-reporter=tap test/installer.test.js test/cli.test.js && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/scripts -p 'test_*.py'",
+    "test": "node --test --test-reporter=tap test/installer.test.js test/cli.test.js test/postinstall.test.js && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/scripts -p 'test_*.py'",
+    "postinstall": "node bin/postinstall.js",
     "prepack": "find skill -name __pycache__ -type d -prune -exec rm -rf {} +"
   },
   "engines": {
