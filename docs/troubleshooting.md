@@ -1,5 +1,8 @@
 # Troubleshooting
 
+**I ran `npm i claude-gemini-architect` and the skill doesn't show up.**
+Without `-g`, npm only adds the package to the current project's `node_modules`. Install the skill with `npx claude-gemini-architect` or `npm i -g claude-gemini-architect`. If you used `--ignore-scripts` (or pnpm/bun, which block install scripts), run `claude-gemini-architect` once after the global install.
+
 **`agy -p` says it ran nothing and lists `denied_actions`.**
 That's expected in terminal mode: headless agy can't run commands. Claude runs the plan's blocks. Don't "fix" it with allow rules (see the security model in the README).
 

@@ -39,6 +39,8 @@ Claude's tokens go to the plan and the review. The code, the tests and the fix l
 npx claude-gemini-architect
 ```
 
+> `npm i claude-gemini-architect` (without `-g`) only adds the package to a project's `node_modules`; it doesn't install the skill. Use `npx` as above, or `npm i -g` (see [Install options](#install-options)).
+
 Then, in Claude Code:
 
 ```
@@ -76,6 +78,10 @@ The skill picks the mode by itself (`HERDR_ENV=1` means herdr).
 
 ## Install options
 
+Pick one of these. The installer never replaces a folder it didn't create.
+
+**npx (recommended)**
+
 ```bash
 npx claude-gemini-architect              # ~/.claude/skills/claude-gemini-architect ($CLAUDE_CONFIG_DIR/skills if set)
 npx claude-gemini-architect --project    # <repo root>/.claude/skills/claude-gemini-architect (this repo only)
@@ -86,7 +92,23 @@ npx claude-gemini-architect --check      # only check the requirements
 
 The installer has no dependencies. It copies the skill atomically, so a failure never leaves half a skill behind, and it never deletes a folder it didn't create unless you pass `--force`.
 
-Manual install:
+**npm, global**
+
+```bash
+npm i -g claude-gemini-architect
+```
+
+A global install copies the skill as soon as npm finishes, and running it again updates it. With `--ignore-scripts`, or with a package manager that blocks install scripts by default (pnpm 10+, bun), run `claude-gemini-architect` once afterwards. To remove it, run `claude-gemini-architect --uninstall` **before** `npm rm -g claude-gemini-architect`: npm has no uninstall hook.
+
+**skills CLI (several agents)**
+
+```bash
+npx skills add francisco-gomes/claude-gemini-architect
+```
+
+With [vercel-labs/skills](https://github.com/vercel-labs/skills), the skill goes to `~/.agents/skills` and is linked into each agent's folder, `~/.claude/skills` included. Update and remove it with that CLI.
+
+**Manual install**
 
 ```bash
 git clone https://github.com/francisco-gomes/claude-gemini-architect
@@ -102,6 +124,7 @@ cp -r claude-gemini-architect/skill ~/.claude/skills/claude-gemini-architect
   ```
 - **What the watchdog is not:** it guards against an executor's mistakes and improvisation, not against a hostile model. A model that edits `.git/config` or writes a script, and then asks for a command the watchdog approves, can still run code. If you don't trust the executor, run it in a container or a VM.
 - **Production (Part B) is never automatic.** It starts only after you explicitly authorize merge and deploy, and it runs one step at a time, each result checked before the next.
+- **The only install script runs on a global npm install.** It copies `skill/` into the skills folder, as `npx claude-gemini-architect` does, and touches nothing else: no network, no folder it didn't create, and it never fails the npm install.
 
 ## Does it really save tokens?
 
