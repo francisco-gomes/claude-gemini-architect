@@ -4,7 +4,7 @@
 
 - `npm i -g claude-gemini-architect` now installs the skill: a `postinstall` that runs only on global installs, updates an earlier installation of this installer and leaves any other folder alone. A local `npm i` still installs nothing, and the README now says so.
 - README: install with `npx skills add francisco-gomes/claude-gemini-architect` ([vercel-labs/skills](https://github.com/vercel-labs/skills)).
-- Troubleshooting: the skill doesn't show up after `npm i`.
+- Troubleshooting: the skill doesn't show up after `npm i`; npm's `allow-scripts` warning.
 
 ## 0.1.0 (2026-10-28)
 
