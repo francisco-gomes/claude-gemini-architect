@@ -68,7 +68,7 @@ The skill picks the mode by itself (`HERDR_ENV=1` means herdr).
 | Tool | Needed for |
 |---|---|
 | Claude Code | running the skill |
-| `agy` (Antigravity CLI), logged in | Gemini, the executor |
+| `agy` (Antigravity CLI), logged in, with `gemini-4-neon-xhigh` in `agy models` | Gemini 4 Neon (XHigh), the executor |
 | Python 3 | the helper scripts |
 | git | commits and reviews |
 | herdr *(optional)* | herdr mode; without it only terminal mode works |

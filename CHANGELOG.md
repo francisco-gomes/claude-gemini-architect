@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 (2026-11-23)
+
+- The executor model is pinned: every `agy` start and call passes `--model gemini-4-neon-xhigh` (Gemini 4 Neon, XHigh) instead of agy's default model. If that model is no longer in `agy models`, the skill asks before picking another.
+
 ## 0.1.1 (2026-10-28)
 
 - `npm i -g claude-gemini-architect` now installs the skill: a `postinstall` that runs only on global installs, updates an earlier installation of this installer and leaves any other folder alone. A local `npm i` still installs nothing, and the README now says so.

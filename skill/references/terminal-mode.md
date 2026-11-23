@@ -4,10 +4,10 @@ Gemini runs headless with `agy -p`. It can edit files; **every terminal command 
 
 ## Setup
 
-- `command -v agy` and `agy models` (lists models only when logged in).
+- `command -v agy` and `agy models` (lists models only when logged in). `gemini-4-neon-xhigh` must be listed; every `agy` call passes `--model gemini-4-neon-xhigh`.
 - Every call runs **from the repo root** and returns JSON:
   ```bash
-  cd <repo> && agy -p "<instruction>" --mode accept-edits --print-timeout 900s --output-format json > <scratchpad>/agy_<step>.json
+  cd <repo> && agy -p "<instruction>" --model gemini-4-neon-xhigh --mode accept-edits --print-timeout 900s --output-format json > <scratchpad>/agy_<step>.json
   ```
   Fields: `status` (`SUCCESS`), `response`, `conversation_id`, `denied_actions` (normal in this mode), `usage`.
 - Continue the same conversation with `--conversation <conversation_id>`; that is how a failing test goes back to Gemini. Start a new conversation for each plan.

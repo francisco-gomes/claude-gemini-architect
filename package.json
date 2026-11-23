@@ -1,6 +1,6 @@
 {
   "name": "claude-gemini-architect",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Save Claude tokens: Claude designs the plan, Gemini does the heavy lifting through Antigravity (agy), and Claude reviews the diff.",
   "type": "module",
   "bin": {

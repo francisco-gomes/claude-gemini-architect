@@ -13,6 +13,10 @@ description: Use when the user wants Gemini / Antigravity (`agy`) to write the c
 - **Gemini:** all product code and tests, including the fixes your review finds (send them back with `--conversation <id>`).
 - About to edit product code or tests yourself ("it's one line", "no time left")? **Ask the user first.** Telling them afterwards is not asking.
 
+## Model
+
+Gemini 4 Neon: pass `--model gemini-4-neon-xhigh` on every `agy` start or call. Check it is listed with `agy models`; if it is gone, ask the user before picking another.
+
 ## Pick the mode
 
 ```bash

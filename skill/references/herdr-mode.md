@@ -8,7 +8,7 @@ Gemini runs interactively in a herdr pane next to you (`agy --mode accept-edits`
 - Start the executor once per session:
   ```bash
   herdr pane split --current --direction right --cwd <repo> --no-focus
-  herdr agent start gemini-exec --kind agy --pane <new-pane-id> -- --mode accept-edits
+  herdr agent start gemini-exec --kind agy --pane <new-pane-id> -- --model gemini-4-neon-xhigh --mode accept-edits
   ```
 - Claude Code permissions needed in `~/.claude/settings.json`: `Bash(herdr agent start:*)`, `Bash(herdr agent prompt:*)`, and the `read`, `get`, `wait`, `send-keys`, `list` agent subcommands, plus `Bash(herdr pane list:*)`, `Bash(herdr pane read:*)`, `Bash(herdr pane layout:*)`.
 - Before each new plan: `herdr agent prompt gemini-exec "/clear" --wait --timeout 30000`.
